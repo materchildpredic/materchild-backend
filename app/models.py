@@ -83,3 +83,10 @@ class DiagnosticoRiesgo(db.Model):
     id_control = db.Column(db.Integer, db.ForeignKey('control_prenatal.id_control'), unique=True, nullable=False)
     nivel_riesgo = db.Column(db.String(20), nullable=False)
     confianza_modelo = db.Column(db.Numeric(5,2))
+
+class Administrador(db.Model):
+    __tablename__ = 'administrador'
+    id_admin = db.Column(db.Integer, primary_key=True)
+    usuario = db.Column(db.String(50), unique=True, nullable=False)
+    contrasena = db.Column(db.String(255), nullable=False) # Texto plano temporal para cumplir requerimiento directo (12345)
+    nombre_completo = db.Column(db.String(100), nullable=False)

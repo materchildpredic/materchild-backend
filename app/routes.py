@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from app.models import db, Usuario, SesionOTP
+from app.models import db, Usuario, SesionOTP, Administrador
 from app.services.email_service import enviar_correo_otp
 import random
 from datetime import datetime, timedelta, timezone
@@ -109,6 +109,29 @@ def verificar_otp():
         'usuario': {
             'nombre_completo': f"{usuario.nombres} {usuario.apellidos}",
             'especialidad': usuario.especialidad
+        }
+    }), 200
+
+@auth_bp.route('/api/auth/admin-login', methods=['POST'])
+def admin_login():
+    datos = request.get_json()
+    usuario_ingresado = datos.get('usuario')
+    contrasena_ingresada = datos.get('contrasena')
+
+    if not usuario_ingresado or not contrasena_ingresada:
+        return jsonify({'error': 'Usuario y contraseña obligatorios'}), 400
+
+    # Buscamos el administrador en la base de datos
+    admin = Administrador.query.filter_by(usuario=usuario_ingresado).first()
+
+    if not admin or admin.contrasena != str(contrasena_ingresada):
+        return jsonify({'error': 'Credenciales de administrador incorrectas'}), 401
+
+    return jsonify({
+        'mensaje': 'Ingreso de administrador exitoso',
+        'admin': {
+            'usuario': admin.usuario,
+            'nombre': admin.nombre_completo
         }
     }), 200
     

@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Importamos la base de datos y los modelos desde la carpeta 'app'
-from app.models import db, Usuario, SesionOTP, DatasetCrudo, PacienteSintetica, ControlPrenatal, ReglaClasificacion, DiagnosticoRiesgo
+from app.models import db, Usuario, SesionOTP, DatasetCrudo, PacienteSintetica, ControlPrenatal, ReglaClasificacion, DiagnosticoRiesgo, Administrador
 from app.services.ai_service import AIService
 
 # Cargar variables de entorno del archivo .env
@@ -25,8 +25,13 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # Vinculamos la app con SQLAlchemy
 db.init_app(app)
 
+#registro de rutas de autenticación
 from app.routes import auth_bp
 app.register_blueprint(auth_bp)
+
+#registro de rutas de datos de dataset
+from app.data_routes import data_bp
+app.register_blueprint(data_bp)
 
 # ESTO CREA LAS TABLAS EN NEON SI NO EXISTEN AÚN
 with app.app_context():
