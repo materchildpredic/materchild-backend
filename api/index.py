@@ -10,6 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Importamos la base de datos y los modelos desde la carpeta 'app'
 from app.models import db, Usuario, SesionOTP, DatasetCrudo, PacienteSintetica, ControlPrenatal, ReglaClasificacion, DiagnosticoRiesgo
+from app.services.ai_service import AIService
 
 # Cargar variables de entorno del archivo .env
 load_dotenv()
@@ -43,6 +44,9 @@ def estado():
         })
     except Exception as e:
          return jsonify({"error": "No se pudo conectar a la base de datos", "detalle": str(e)}), 500
+
+# Despertamos a la IA para verificar la conexión
+oraculo = AIService()
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
