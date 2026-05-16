@@ -25,6 +25,7 @@ class SesionOTP(db.Model):
     codigo_otp = db.Column(db.String(10), nullable=False)
     fecha_expiracion = db.Column(db.DateTime(timezone=True), nullable=False)
     usado = db.Column(db.Boolean, default=False, nullable=False)
+    intentos_fallidos = db.Column(db.Integer, default=0, nullable=False)
 
 class DatasetCrudo(db.Model):
     __tablename__ = 'dataset_crudo'
