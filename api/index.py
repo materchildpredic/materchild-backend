@@ -24,6 +24,9 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # Vinculamos la app con SQLAlchemy
 db.init_app(app)
 
+from app.routes import auth_bp
+app.register_blueprint(auth_bp)
+
 # ESTO CREA LAS TABLAS EN NEON SI NO EXISTEN AÚN
 with app.app_context():
     db.create_all()
