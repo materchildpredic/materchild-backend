@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify
+from sqlalchemy import or_
 from app.models import db, Usuario, SesionOTP, Administrador, PacienteSintetica, ControlPrenatal
 from app.services.email_service import enviar_correo_otp
 import random
@@ -159,11 +160,29 @@ def admin_login():
     
 @auth_bp.route('/api/pacientes', methods=['GET'])
 def obtener_pacientes_recientes():
-    # Traemos las últimas 15 pacientes creadas
-    pacientes = PacienteSintetica.query.order_by(PacienteSintetica.id_paciente.desc()).limit(5).all()
+    # 1. Capturamos lo que el usuario escribió
+    busqueda = request.args.get('q')
     
+    # 2. Inicializamos la variable vacía por seguridad
+    pacientes_db = []
+    
+    if busqueda:
+        # Si hay texto, buscamos en los nombres, apellidos o identificación
+        termino = f"%{busqueda}%"
+        pacientes_db = PacienteSintetica.query.filter(
+            or_(
+                PacienteSintetica.nombres_ficticios.ilike(termino),
+                PacienteSintetica.apellidos_ficticios.ilike(termino),
+                PacienteSintetica.identificacion_ficticia.ilike(termino)
+            )
+        ).all()
+    else:
+        # Si está vacío, traemos los 5 más recientes
+        pacientes_db = PacienteSintetica.query.order_by(PacienteSintetica.id_paciente.desc()).limit(5).all()
+    
+    # 3. Formateamos y enviamos la respuesta
     resultado = []
-    for p in pacientes:
+    for p in pacientes_db:
         control = ControlPrenatal.query.filter_by(id_paciente=p.id_paciente).first()
         
         if control:
