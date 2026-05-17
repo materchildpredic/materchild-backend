@@ -160,7 +160,7 @@ def admin_login():
 @auth_bp.route('/api/pacientes', methods=['GET'])
 def obtener_pacientes_recientes():
     # Traemos las últimas 15 pacientes creadas
-    pacientes = PacienteSintetica.query.order_by(PacienteSintetica.id_paciente.desc()).limit(15).all()
+    pacientes = PacienteSintetica.query.order_by(PacienteSintetica.id_paciente.desc()).limit(5).all()
     
     resultado = []
     for p in pacientes:
