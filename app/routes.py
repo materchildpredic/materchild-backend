@@ -57,7 +57,6 @@ def solicitar_otp():
     else:
         return jsonify({'error': 'Error al procesar el envío'}), 500
     
-
 @auth_bp.route('/api/auth/verificar-otp', methods=['POST'])
 def verificar_otp():
     datos = request.get_json()
