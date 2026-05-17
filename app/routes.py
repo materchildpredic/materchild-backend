@@ -1,13 +1,43 @@
 from flask import Blueprint, request, jsonify
-from app.models import db, Usuario, SesionOTP, Administrador
+from app.models import db, Usuario, SesionOTP, Administrador, PacienteSintetica, ControlPrenatal
 from app.services.email_service import enviar_correo_otp
 import random
 from datetime import datetime, timedelta, timezone
+from app.services.ai_service import AIService
 
 auth_bp = Blueprint('auth', __name__)
 
 def generar_codigo_6_digitos():
     return str(random.randint(100000, 999999))
+
+@auth_bp.route('/api/auth/register', methods=['POST'])
+def registrar_usuario():
+    datos = request.get_json()
+    
+    # Capturamos los datos del frontend
+    nombres = datos.get('nombres')
+    apellidos = datos.get('apellidos')
+    correo = datos.get('correo_institucional')
+    especialidad = datos.get('especialidad')
+
+    if not correo or not nombres or not apellidos:
+        return jsonify({'error': 'Nombres, apellidos y correo son obligatorios'}), 400
+
+    if Usuario.query.filter_by(correo_institucional=correo).first():
+        return jsonify({'error': 'El correo ya está registrado'}), 400
+
+    # Guardamos usando los campos exactos de tu modelo
+    nuevo_usuario = Usuario(
+        nombres=nombres,
+        apellidos=apellidos,
+        correo_institucional=correo,
+        especialidad=especialidad
+    )
+    
+    db.session.add(nuevo_usuario)
+    db.session.commit()
+
+    return jsonify({'mensaje': 'Médico registrado exitosamente, Inicie sesión'}), 201
 
 @auth_bp.route('/api/auth/solicitar-otp', methods=['POST'])
 def solicitar_otp():
@@ -17,23 +47,12 @@ def solicitar_otp():
     if not correo:
         return jsonify({'error': 'El correo es obligatorio'}), 400
 
-    # 1. Buscar o crear el usuario (Médico)
+    # 1. Buscar estrictamente al usuario (Médico ya debe estar registrado)
     usuario = Usuario.query.filter_by(correo_institucional=correo).first()
     
+    # Si intentan loguearse sin haberse registrado primero, les arrojamos error
     if not usuario:
-        # Si no existe, es un flujo de registro
-        nombre = datos.get('nombre', 'Usuario')
-        apellido = datos.get('apellido', 'Pendiente')
-        especialidad = datos.get('especialidad', 'General')
-        
-        usuario = Usuario(
-            nombres=nombre,
-            apellidos=apellido,
-            correo_institucional=correo,
-            especialidad=especialidad
-        )
-        db.session.add(usuario)
-        db.session.commit()
+        return jsonify({'error': 'El correo institucional no se encuentra registrado.'}), 404
 
     # 2. Generar código y tiempo de expiración (10 min)
     codigo = generar_codigo_6_digitos()
@@ -51,11 +70,12 @@ def solicitar_otp():
     db.session.add(nueva_sesion)
     db.session.commit()
 
-    # 4. Enviar el código
+    # 4. Enviar el correo REAL usando tu cuenta de Outlook
+    # Modificado para pasarle tus variables exactas: 'correo' y 'codigo'
     if enviar_correo_otp(correo, codigo):
         return jsonify({'mensaje': 'Código enviado exitosamente', 'correo': correo}), 200
     else:
-        return jsonify({'error': 'Error al procesar el envío'}), 500
+        return jsonify({'error': 'El servidor SMTP falló al despachar el correo electrónico.'}), 500
     
 @auth_bp.route('/api/auth/verificar-otp', methods=['POST'])
 def verificar_otp():
@@ -103,10 +123,13 @@ def verificar_otp():
     usuario.ultimo_acceso = datetime.now(timezone.utc)
     db.session.commit()
 
+    # 7.Buscamos al usuario por su correo institucional
+    usuario = Usuario.query.filter_by(correo_institucional=correo).first()
+
     return jsonify({
         'mensaje': 'Autenticación exitosa',
         'usuario': {
-            'nombre_completo': f"{usuario.nombres} {usuario.apellidos}",
+            'nombre_completo': f"Dr. {usuario.nombres} {usuario.apellidos}",
             'especialidad': usuario.especialidad
         }
     }), 200
@@ -134,3 +157,47 @@ def admin_login():
         }
     }), 200
     
+@auth_bp.route('/api/pacientes', methods=['GET'])
+def obtener_pacientes_recientes():
+    # Traemos las últimas 15 pacientes creadas
+    pacientes = PacienteSintetica.query.order_by(PacienteSintetica.id_paciente.desc()).limit(15).all()
+    
+    resultado = []
+    for p in pacientes:
+        control = ControlPrenatal.query.filter_by(id_paciente=p.id_paciente).first()
+        
+        if control:
+            resultado.append({
+                'id_paciente': p.id_paciente,
+                'cedula': p.identificacion_ficticia,
+                'nombres_completos': f"{p.nombres_ficticios} {p.apellidos_ficticios}",
+                'edad': p.edad,
+                'signos_vitales': {
+                    'presion': f"{control.presion_sistolica}/{control.presion_diastolica}",
+                    'glucosa': control.bs_azucar_sangre,
+                    'temperatura': control.temperatura_corporal,
+                    'ritmo_cardiaco': control.frecuencia_cardiaca
+                }
+            })
+            
+    return jsonify(resultado), 200
+
+@auth_bp.route('/api/predecir', methods=['POST'])
+def predecir_riesgo():
+    """ 
+    PATRÓN FACADE: El frontend solo envía los signos vitales. 
+    Este endpoint se encarga de hablar con el Singleton de IA y devolver la respuesta.
+    """
+    datos = request.get_json()
+    signos_vitales = datos.get('signos_vitales')
+
+    if not signos_vitales:
+        return jsonify({'error': 'Faltan signos vitales'}), 400
+
+    oraculo = AIService()
+    diagnostico = oraculo.predecir_riesgo_clinico(signos_vitales)
+
+    if diagnostico:
+        return jsonify(diagnostico), 200
+    else:
+        return jsonify({'error': 'La IA no pudo generar el diagnóstico.'}), 500
