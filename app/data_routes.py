@@ -88,7 +88,7 @@ def procesar_lote_crudo():
     identidades = oraculo.generar_identidades_sinteticas(cantidad_encontrada)
 
     if not identidades or len(identidades) != cantidad_encontrada:
-        return jsonify({'error': 'La IA falló al generar las identidades. Intenta de nuevo.'}), 500
+        return jsonify({'error': 'El motor falló al generar las identidades. Intenta de nuevo.'}), 500
 
     usuario_responsable = Usuario.query.first()
     if not usuario_responsable:
@@ -107,7 +107,10 @@ def procesar_lote_crudo():
             nombres = identidad.get('nombres_ficticios', 'Paciente')
             apellidos = identidad.get('apellidos_ficticios', 'Generada')
 
-            # 3. Creamos a la paciente combinando la cédula de Python y los nombres de la IA
+            # 3. Extraemos el peso inventado por el motor (con 70.0 kg como valor de emergencia por si el motor falla)
+            peso_generado = identidad.get('peso', 70.0)
+
+            # 4. Creamos a la paciente combinando la cédula de Python y los nombres de la IA
             nueva_paciente = PacienteSintetica(
                 identificacion_ficticia=cedula_segura,
                 nombres_ficticios=nombres,
@@ -126,7 +129,8 @@ def procesar_lote_crudo():
                 presion_diastolica=crudo.diastolic_bp,
                 bs_azucar_sangre=crudo.bs,
                 temperatura_corporal=crudo.body_temp,
-                frecuencia_cardiaca=crudo.heart_rate
+                frecuencia_cardiaca=crudo.heart_rate,
+                peso=peso_generado
             )
             db.session.add(nuevo_control)
 
