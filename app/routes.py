@@ -201,6 +201,35 @@ def obtener_pacientes_recientes():
             
     return jsonify(resultado), 200
 
+@auth_bp.route('/api/pacientes/<int:id_paciente>', methods=['GET'])
+def obtener_paciente_por_id(id_paciente):
+    # Buscamos al paciente por su ID
+    paciente = PacienteSintetica.query.get(id_paciente)
+    
+    if not paciente:
+        return jsonify({'error': 'Paciente no encontrado'}), 404
+        
+    # CORRECCIÓN: Buscamos el control prenatal sin exigir la columna de fecha
+    control = ControlPrenatal.query.filter_by(id_paciente=id_paciente).first()
+    
+    # Armamos el paquete de datos
+    datos_paciente = {
+        'id_paciente': paciente.id_paciente,
+        'cedula': paciente.identificacion_ficticia,
+        'edad': paciente.edad,
+        'peso': control.peso if control else 0,
+        'semanas_gestacion': control.semanas_gestacion if control else 0,
+        'signos_vitales': {
+            'presion_sistolica': control.presion_sistolica if control else 0,
+            'presion_diastolica': control.presion_diastolica if control else 0,
+            'glucosa': control.bs_azucar_sangre if control else 0,
+            'temperatura': control.temperatura_corporal if control else 0,
+            'ritmo_cardiaco': control.frecuencia_cardiaca if control else 0
+        }
+    }
+    
+    return jsonify(datos_paciente), 200
+
 @auth_bp.route('/api/predecir', methods=['POST'])
 def predecir_riesgo():
     """ 
