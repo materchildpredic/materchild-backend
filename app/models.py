@@ -62,6 +62,7 @@ class ControlPrenatal(db.Model):
     bs_azucar_sangre = db.Column(db.Numeric(6,2))
     temperatura_corporal = db.Column(db.Numeric(4,1))
     frecuencia_cardiaca = db.Column(db.Integer)
+    peso = db.Column(db.Float, nullable=True)
 
     # Relación 1 a 1 con el diagnóstico
     diagnostico = db.relationship('DiagnosticoRiesgo', backref='control', uselist=False)

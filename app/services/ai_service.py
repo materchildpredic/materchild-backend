@@ -77,15 +77,20 @@ class AIService:
 
     def generar_identidades_sinteticas(self, cantidad):
         if self.modo_simulacion:
-            return [{"nombres_ficticios": f"Paciente {i}", "apellidos_ficticios": "Simulada"} for i in range(cantidad)]
+            return [{"nombres_ficticios": f"Paciente {i}", "apellidos_ficticios": "Simulada", "identificacion_ficticia": f"100000{i}", "peso": 70.5} for i in range(cantidad)]
 
         prompt = f"""
-        Genera {cantidad} nombres y apellidos ficticios de mujeres en Colombia.
+        Genera {cantidad} identidades ficticias de mujeres gestantes en Colombia.
+        Para cada una debes inventar:
+        1. Un nombre ("nombres_ficticios").
+        2. Un apellido ("apellidos_ficticios").
+        4. Un peso corporal realista durante el embarazo entre 50.0 y 95.0 kg ("peso").
+        
         Devuelve SOLO un array JSON válido. NO uses formato markdown, NO escribas ```json, NO escribas texto antes ni después.
         Ejemplo exacto de lo que debes devolver:
         [
-            {{"nombres_ficticios": "Ana Maria", "apellidos_ficticios": "Perez Gomez"}},
-            {{"nombres_ficticios": "Luisa Fernanda", "apellidos_ficticios": "Diaz Ruiz"}}
+            {{"nombres_ficticios": "Ana Maria", "apellidos_ficticios": "Perez Gomez", "peso": 65.4}},
+            {{"nombres_ficticios": "Luisa Fernanda", "apellidos_ficticios": "Diaz Ruiz", "peso": 78.1}}
         ]
         """
 
@@ -103,7 +108,7 @@ class AIService:
             identidades = json.loads(texto_limpio.strip())
             
             while len(identidades) < cantidad:
-                identidades.append({"nombres_ficticios": "Maria", "apellidos_ficticios": "Generada"})
+                identidades.append({"nombres_ficticios": "Maria", "apellidos_ficticios": "Generada", "peso": 70.0})
                 
             return identidades[:cantidad]
             
