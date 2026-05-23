@@ -5,6 +5,7 @@ from app.services.email_service import enviar_correo_otp
 import random
 from datetime import datetime, timedelta, timezone
 from app.services.ai_service import AIService
+from app.services.report_service import ReporteFacade
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -299,3 +300,41 @@ def predecir_riesgo():
             return jsonify({'error': 'La IA respondió, pero la Base de Datos falló al guardar.'}), 500
     else:
         return jsonify({'error': 'Servicio de IA saturado por límite de consultas. Reintente en 1 minuto.'}), 500
+    
+@auth_bp.route('/api/enviar_reporte', methods=['POST'])
+def enviar_reporte():
+    """Ruta que recibe la solicitud de envío de correo y utiliza el Facade."""
+    datos = request.get_json()
+    id_paciente = datos.get('id_paciente')
+    correo_destino = datos.get('correo_destino')
+
+    # 1. Recuperamos el diagnóstico más reciente de la Base de Datos
+    control = ControlPrenatal.query.filter_by(id_paciente=id_paciente).first()
+    diag_existente = DiagnosticoRiesgo.query.filter_by(id_control=control.id_control).first()
+    regla = ReglaClasificacion.query.get(diag_existente.id_regla)
+
+    # Reconstruimos el diccionario del dictamen
+    dictamen = {
+        "enfermedad_predicha": regla.enfermedad_predicha,
+        "nivel_riesgo": diag_existente.nivel_riesgo,
+        "confianza_ia": float(diag_existente.confianza_modelo),
+        "justificacion": regla.descripcion,
+        "alerta_glucosa": regla.alerta_glucosa
+    }
+    
+    # Buscamos a la paciente sintética real de la base de datos
+    paciente_bd = PacienteSintetica.query.filter_by(id_paciente=id_paciente).first()
+    
+    # Armamos un diccionario para mandarlo al PDF
+    datos_paciente_pdf = {
+        'identificacion': paciente_bd.identificacion_ficticia,
+        'nombre_completo': f"{paciente_bd.nombres_ficticios} {paciente_bd.apellidos_ficticios}",
+        'edad': paciente_bd.edad
+    }
+
+    # 2. Invocamos al Facade para que inicie la automatización
+    facade_reporte = ReporteFacade()
+    facade_reporte.automatizar_envio(datos_paciente_pdf, dictamen, correo_destino)
+
+    # 3. Respondemos Inmediatamente al Frontend (No esperamos a que se envíe el correo)
+    return jsonify({'status': 'Proceso de automatización iniciado en segundo plano'}), 200
