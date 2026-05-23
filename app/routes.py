@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from sqlalchemy import or_
-from app.models import db, Usuario, SesionOTP, Administrador, PacienteSintetica, ControlPrenatal
+from app.models import db, Usuario, SesionOTP, Administrador, PacienteSintetica, ControlPrenatal, ReglaClasificacion, DiagnosticoRiesgo
 from app.services.email_service import enviar_correo_otp
 import random
 from datetime import datetime, timedelta, timezone
@@ -238,14 +238,64 @@ def predecir_riesgo():
     """
     datos = request.get_json()
     signos_vitales = datos.get('signos_vitales')
+    id_paciente = datos.get('id_paciente')
 
-    if not signos_vitales:
-        return jsonify({'error': 'Faltan signos vitales'}), 400
+    if not signos_vitales or not id_paciente:
+        return jsonify({'error': 'Faltan datos para procesar el diagnóstico'}), 400
 
+    control = ControlPrenatal.query.filter_by(id_paciente=id_paciente).first()
+    if not control:
+        return jsonify({'error': 'No se encontró un registro de control prenatal para este paciente.'}), 404
+
+    # ========================================================
+    # 1. LÓGICA DE AHORRO: Verificar si ya existe diagnóstico
+    # ========================================================
+    diag_existente = DiagnosticoRiesgo.query.filter_by(id_control=control.id_control).first()
+    
+    if diag_existente and diag_existente.id_regla:
+        # Si ya existe, buscamos la regla asociada y devolvemos sin usar la IA
+        regla = ReglaClasificacion.query.get(diag_existente.id_regla)
+        if regla:
+            print("♻️ Retornando diagnóstico desde Base de Datos (Ahorro de IA)")
+            return jsonify({
+                "enfermedad_predicha": regla.enfermedad_predicha,
+                "justificacion": regla.descripcion,
+                "recomendacion_medica": "Continuar con el monitoreo establecido en el expediente.", # Texto por defecto ya que no lo guardamos en BD
+                "nivel_riesgo": diag_existente.nivel_riesgo,
+                "confianza_ia": float(diag_existente.confianza_modelo) if diag_existente.confianza_modelo else 95,
+                "alerta_glucosa": regla.alerta_glucosa
+            }), 200
+
+    # ========================================================
+    # 2. SI ES NUEVA: Llamamos a la IA y guardamos
+    # ========================================================
     oraculo = AIService()
-    diagnostico = oraculo.predecir_riesgo_clinico(signos_vitales)
+    dictamen = oraculo.predecir_riesgo_clinico(signos_vitales)
 
-    if diagnostico:
-        return jsonify(diagnostico), 200
+    if dictamen:
+        try:
+            nueva_regla = ReglaClasificacion(
+                enfermedad_predicha=dictamen['enfermedad_predicha'],
+                descripcion=dictamen['justificacion'],
+                alerta_glucosa=dictamen.get('alerta_glucosa', 'Sin alerta específica.')
+            )
+            db.session.add(nueva_regla)
+            db.session.flush()
+
+            nuevo_diagnostico = DiagnosticoRiesgo(
+                id_control=control.id_control,
+                id_regla=nueva_regla.id_regla,
+                nivel_riesgo=dictamen['nivel_riesgo'],
+                confianza_modelo=dictamen['confianza_ia']
+            )
+            db.session.add(nuevo_diagnostico)
+            db.session.commit()
+
+            return jsonify(dictamen), 200
+
+        except Exception as e:
+            db.session.rollback()
+            print(f"❌ Error crítico en SQL: {e}")
+            return jsonify({'error': 'La IA respondió, pero la Base de Datos falló al guardar.'}), 500
     else:
-        return jsonify({'error': 'La IA no pudo generar el diagnóstico.'}), 500
+        return jsonify({'error': 'Servicio de IA saturado por límite de consultas. Reintente en 1 minuto.'}), 500
