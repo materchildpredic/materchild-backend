@@ -52,18 +52,30 @@ class AIService:
             return {
                 "enfermedad_predicha": "Preeclampsia (Simulada)",
                 "justificacion": "La IA simulada detectó una presión sistólica elevada combinada con edad materna avanzada.",
-                "recomendacion_medica": "Programar monitoreo estricto de presión arterial y proteinuria 24h."
+                "recomendacion_medica": "Programar monitoreo estricto de presión arterial y proteinuria 24h.",
+                "nivel_riesgo": "Alto",
+                "confianza_ia": 92,
+                "alerta_glucosa": "Niveles estables."
             }
 
         prompt = f"""
         Eres un 'Oráculo Clínico', un sistema experto en ginecobstetricia de la plataforma Materchild Predic.
         Analiza los siguientes signos vitales de una paciente gestante: {datos_paciente}
-        Identifica la complicación materna MÁS PROBABLE.
-        Responde ESTRICTAMENTE en formato JSON con esta estructura:
+        
+        Basado estrictamente en estos datos, debes determinar:
+        1. La complicación materna MÁS PROBABLE.
+        2. El nivel de riesgo general (Alto, Medio, Bajo).
+        3. Un porcentaje de confianza de tu predicción (número entero entre 70 y 99).
+        4. Una alerta específica sobre el nivel de azúcar en la sangre.
+
+        Responde ESTRICTAMENTE en formato JSON con esta estructura exacta, sin texto adicional:
         {{
             "enfermedad_predicha": "Nombre de la enfermedad",
-            "justificacion": "Explicación médica breve basada en las variables alteradas",
-            "recomendacion_medica": "Acción clínica sugerida"
+            "justificacion": "Explica de forma directa POR QUÉ asignaste ese nivel de riesgo y esa enfermedad, basándote en los signos vitales específicos que están alterados.",
+            "recomendacion_medica": "Acción clínica sugerida",
+            "nivel_riesgo": "Alto",
+            "confianza_ia": 95,
+            "alerta_glucosa": "Nota clínica sobre los niveles de azúcar."
         }}
         """
 
@@ -72,9 +84,14 @@ class AIService:
             texto_limpio = respuesta.text.replace("```json", "").replace("```", "").strip()
             return json.loads(texto_limpio)
         except Exception as e:
-            print(f"❌ Error en la predicción de IA: {e}")
-            return None
-
+            error_msg = str(e)
+            print(f"❌ Error analizando respuesta de IA: {error_msg}")
+            
+            # Detectamos si es el límite de velocidad de Google
+            if "Quota" in error_msg or "429" in error_msg or "exhausted" in error_msg.lower():
+                print("⚠️ Límite de velocidad de la API alcanzado. Reintente en 1 minuto")
+                return None
+        
     def generar_identidades_sinteticas(self, cantidad):
         if self.modo_simulacion:
             return [{"nombres_ficticios": f"Paciente {i}", "apellidos_ficticios": "Simulada", "identificacion_ficticia": f"100000{i}", "peso": 70.5} for i in range(cantidad)]
