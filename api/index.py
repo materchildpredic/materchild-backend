@@ -16,7 +16,33 @@ from app.services.ai_service import AIService
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)
+
+# ==========================================
+# 1. CONFIGURACIÓN DE CORS (Seguridad Cross-Domain)
+# ==========================================
+dominios_permitidos = [
+    "http://localhost:5500", 
+    "http://127.0.0.1:5500", 
+    "https://tu-proyecto-materchild.vercel.app" # NOTA: Recuerda cambiar esto por tu URL real de Vercel
+]
+CORS(app, resources={r"/api/*": {"origins": dominios_permitidos}})
+
+# ==========================================
+# 2. CABECERAS DE SEGURIDAD (Solución alertas QA)
+# ==========================================
+@app.after_request
+def aplicar_cabeceras_seguridad(response):
+    # Soluciona la alerta de Content Security Policy (CSP)
+    response.headers['Content-Security-Policy'] = "default-src 'self';"
+    
+    # Soluciona la filtración de versión ocultando que usamos Werkzeug/Flask
+    response.headers['Server'] = "MaterChild Predic Server"
+    
+    # Cabeceras extra de protección (Clickjacking y MIME-sniffing)
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    
+    return response
 
 # Configuración de la base de datos apuntando a Neon.tech
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
@@ -25,11 +51,11 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # Vinculamos la app con SQLAlchemy
 db.init_app(app)
 
-#registro de rutas de autenticación
+# Registro de rutas de autenticación
 from app.routes import auth_bp
 app.register_blueprint(auth_bp)
 
-#registro de rutas de datos de dataset
+# Registro de rutas de datos de dataset
 from app.data_routes import data_bp
 app.register_blueprint(data_bp)
 
