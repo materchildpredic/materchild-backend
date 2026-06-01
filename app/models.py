@@ -67,23 +67,23 @@ class ControlPrenatal(db.Model):
     # Relación 1 a 1 con el diagnóstico
     diagnostico = db.relationship('DiagnosticoRiesgo', backref='control', uselist=False)
 
+from datetime import datetime
+
 class ReglaClasificacion(db.Model):
     __tablename__ = 'regla_clasificacion'
     id_regla = db.Column(db.Integer, primary_key=True)
-    nombre_regla = db.Column(db.String(100), nullable=False)
-    condicion_variable = db.Column(db.String(50), nullable=False)
-    operador = db.Column(db.String(10), nullable=False)
-    valor_umbral = db.Column(db.Numeric(8,2), nullable=False)
-    nivel_riesgo_asignado = db.Column(db.String(20), nullable=False)
-    complicacion_probable = db.Column(db.String(150))
-    activa = db.Column(db.Boolean, default=True, nullable=False)
+    enfermedad_predicha = db.Column(db.String(150), nullable=False)
+    descripcion = db.Column(db.Text, nullable=False) 
+    alerta_glucosa = db.Column(db.Text)
 
 class DiagnosticoRiesgo(db.Model):
     __tablename__ = 'diagnostico_riesgo'
     id_diagnostico = db.Column(db.Integer, primary_key=True)
     id_control = db.Column(db.Integer, db.ForeignKey('control_prenatal.id_control'), unique=True, nullable=False)
+    id_regla = db.Column(db.Integer, db.ForeignKey('regla_clasificacion.id_regla'), nullable=True)
     nivel_riesgo = db.Column(db.String(20), nullable=False)
     confianza_modelo = db.Column(db.Numeric(5,2))
+    fecha_diagnostico = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
 class Administrador(db.Model):
     __tablename__ = 'administrador'
