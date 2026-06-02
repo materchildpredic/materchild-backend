@@ -23,7 +23,7 @@ app = Flask(__name__)
 dominios_permitidos = [
     "http://localhost:5500", 
     "http://127.0.0.1:5500", 
-    "https://materchild-frontend.vercel.app/" # NOTA: Recuerda cambiar esto por tu URL real de Vercel
+    "https://materchild-frontend.vercel.app" # NOTA: Recuerda cambiar esto por tu URL real de Vercel
 ]
 CORS(app, resources={r"/api/*": {"origins": dominios_permitidos}})
 
