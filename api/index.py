@@ -48,6 +48,15 @@ def aplicar_cabeceras_seguridad(response):
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# --- EL SALVAVIDAS PARA NEON.TECH (Evita cortes de conexión y errores SSL) ---
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    "pool_pre_ping": True,
+    "pool_recycle": 300,
+    "connect_args": {
+        "sslmode": "require"
+    }
+}
+
 # Vinculamos la app con SQLAlchemy
 db.init_app(app)
 
