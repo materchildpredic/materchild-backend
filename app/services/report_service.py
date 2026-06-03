@@ -18,10 +18,9 @@ class GeneradorPDF:
         COLOR_TEXTO = (50, 50, 50)
         COLOR_ALERTA = (220, 53, 69) if dictamen['nivel_riesgo'] == 'Alto' else (25, 135, 84)
 
-        
-        # Pon esto en GeneradorPDF donde configuramos la ruta:
-        base_dir = os.path.abspath(os.path.dirname(__file__)) # Se ubica en app/services
-        ruta_logo = os.path.join(base_dir, '..', '..', 'assets', 'logo.png') # Sube a la raíz y entra a assets
+
+        base_dir = os.path.abspath(os.path.dirname(__file__))
+        ruta_logo = os.path.join(base_dir, '..', '..', 'assets', 'logo.png')
 
         if os.path.exists(ruta_logo):
             pdf.image(ruta_logo, x=10, y=8, w=30)
@@ -78,7 +77,7 @@ class GeneradorPDF:
 # ==========================================
 class ServicioCorreo:
     def enviar(self, destinatario, ruta_pdf):
-        # Tomamos las credenciales seguras de tu archivo .env
+        # Tomamos las credenciales seguras delrchivo .env
         REMITENTE = os.getenv('EMAIL_USUARIO') 
         PASSWORD = os.getenv('EMAIL_CONTRASENA')
 
