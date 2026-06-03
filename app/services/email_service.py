@@ -65,13 +65,21 @@ def enviar_correo_otp(destinatario, codigo_otp):
     msg.attach(MIMEText(html, 'html'))
 
     try:
-        # Conexión segura con Gmail
-        server = smtplib.SMTP(smtp_server, smtp_port)
+        # Conexión segura con Gmail (agregamos un timeout de 10 segundos)
+        server = smtplib.SMTP(smtp_server, smtp_port, timeout=10) 
+        
+        # Le decimos explícitamente a Python que salude al servidor (a veces Render se salta esto)
+        server.ehlo() 
+        
         server.starttls() # Activa el cifrado de seguridad
+        
+        # Volvemos a saludar después de encriptar el canal
+        server.ehlo()
+        
         server.login(smtp_user, smtp_pass)
         server.sendmail(smtp_user, destinatario, msg.as_string())
         server.quit()
         return True
     except Exception as e:
-        print(f"❌ Error real en el servidor SMTP de Gmail: {e}")
+        print(f"❌ Error real en el servidor SMTP de Gmail: {e}", flush=True)
         return False
